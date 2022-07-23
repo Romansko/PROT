@@ -1,7 +1,7 @@
 """
 PROT - Python Replication & Obfuscation Tools
 Python 3.10
-file Obfuscator.py: Obfuscation logics.
+file obfuscator.py: Obfuscation logics.
 https://github.com/Romansko/PROT/blob/main/prot/obfuscator.py
 """
 import re

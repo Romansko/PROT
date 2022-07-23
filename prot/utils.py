@@ -101,9 +101,9 @@ class CodeInfo:
         self.reserved  = dir(object)
         self.reserved += keyword.kwlist
         self.reserved += keyword.softkwlist
-        self.reserved += list(set(dir(builtins)) - set(dir(object)))
+        self.reserved += dir(builtins)
         for bi in dir(builtins):
-            self.reserved += list(set(dir(bi)) - set(dir(object)))
+            self.reserved += dir(bi)
         self.reserved += sys.builtin_module_names
         if not code or not code.strip():
             print(f"[!] code is empty!")
@@ -122,9 +122,11 @@ class CodeInfo:
             exec(code, namespace)  # execute target file for inner info
             for k in namespace:
                 self.reserved += [k]
-                self.reserved += list(set(dir(namespace[k])) - set(dir(object)))
+                self.reserved += dir(namespace[k])
                 if '__module__' in dir(namespace[k]):
                     self.reserved += [str(namespace[k].__module__)]
+                    if str(namespace[k].__module__) in sys.modules:
+                        self.reserved += dir(sys.modules[str(namespace[k].__module__)])
             self.reserved = list(set(self.reserved))  # remove duplicates
             self.reserved.sort()
             return True

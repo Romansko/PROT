@@ -4,23 +4,23 @@ Python 3.10
 file Obfuscator.py: Obfuscation logics.
 https://github.com/Romansko/PROT/blob/main/prot/obfuscator.py
 """
-import pfh
+import re
+import utils
 import random
 import string
-import keyword
 from sys import argv, exit
 from os import path
 from base64 import b64encode
-import builtins
 
 
 class Obfuscator:
     def __init__(self):
-        self.reserved = keyword.kwlist
-        self.reserved += keyword.softkwlist
-        self.reserved += dir(builtins)
+        self.reserved = None
 
-    def obfuscate(self, data, metadata):
+    def setReserved(self, reserved):
+        self.reserved = reserved
+
+    def obfuscate(self, data):
         pass
 
 
@@ -34,12 +34,17 @@ class CodeObfuscator(Obfuscator):
         self.minDummyVal = minDummyVal
         self.maxDummyVal = maxDummyVal
         self.maxDummies = maxDummies
+        self.consts = []
+        self.reserved = []
 
-    def obfuscate(self, code, co):
+    def obfuscate(self, code):
         """ apply obfuscation logics on code."""
-        code = self.refactorVariables(code, co)
-        code = self.encodeStrings(code, co)
-        code = self.insertDummies(code, co)
+        reserved, consts = utils.extractNames(code)
+        self.reserved = reserved
+        self.consts = consts
+        code = self.obfuscateStrings(code)
+        code = self.obfuscateVariables(code)
+        code = self.insertDummies(code)
         return code
 
     def getRandVarName(self, exclude=None):
@@ -58,40 +63,39 @@ class CodeObfuscator(Obfuscator):
         dummy = self.getRandVarName() + " = "
         for i in range(ops - 1):
             dummy += str(random.randint(self.minDummyVal, self.maxDummyVal)) + " " + \
-                     random.choice([' + ', ' - ', ' * ', ' / ', ' % ', ' ** ', ' // '])
+                     random.choice([' + ', ' - ', ' * ', ' % ', ' // '])
         dummy += str(random.randint(self.minDummyVal, self.maxDummyVal))
         return dummy
 
-    def refactorVariables(self, code, co):
+    def obfuscateVariables(self, code):
         """ refactor code's variables to random names. """
-        if not code or not co:
+        if not code:
             print("[!] CodeObfuscator::refactorVariables: No code to obfuscate!")
             return None
         exclude = []
-        for var in co.co_names:
+        for var in self.consts:
             if var not in self.reserved:
                 newvar = self.getRandVarName(exclude)
-                code = code.replace(var, newvar)
+                code = re.sub(r"\b%s\b" % var, newvar, code)  # replace whole words only
                 exclude += [newvar]
         return code
 
-    def encodeStrings(self, code, co):
+    def obfuscateStrings(self, code):
         """ Encode (base64) const string within code and wrap with base64 decode logic."""
         code = "from base64 import b64decode\n" + code
-        if not code or not co:
+        if not code:
             print("[!] CodeObfuscator::encodeStrings: No code to obfuscate!")
             return None
-        for s in co.co_consts:
-            if isinstance(s, str):
-                encoded = b64encode(s.encode()).decode()  # base64 string.
-                # Try both "" and ''
-                code = code.replace(f"\"{s}\"", f"b64decode('{encoded}').decode()")
-                code = code.replace(f"\'{s}\'", f"b64decode('{encoded}').decode()")
+        for s in self.consts:
+            encoded = b64encode(s.encode()).decode()  # base64 string.
+            # Try both "" and ''
+            code = code.replace(f"\"{s}\"", f"b64decode('{encoded}').decode()")
+            code = code.replace(f"\'{s}\'", f"b64decode('{encoded}').decode()")
         return code
 
-    def insertDummies(self, code, co):
+    def insertDummies(self, code):
         """ Insert dummy operations into code. """
-        if not code or not co:
+        if not code:
             print("[!] CodeObfuscator::insertDummies: No code to obfuscate!")
             return None
         lines = code.splitlines()
@@ -108,18 +112,17 @@ class CodeObfuscator(Obfuscator):
 class FileObfuscator(CodeObfuscator):
     """ Python Files Obfuscator """
 
-    def obfuscate(self, filepath, _=None):
+    def obfuscate(self, filepath):
         """ Obfuscate a python file. Returns obfuscated code by string. """
-        fh = pfh.PythonFileHandler()
+        fh = utils.PythonFileHandler()
         if not fh.open(filepath):
             return None
         code = fh.read()
-        co = fh.extractCodeObject(code)
-        fh.close()
-        if not code or not co:
+        if not code:
             return None
+        fh.close()
         print(f"[*] Obfuscating {filepath}..")
-        obfuscated = super().obfuscate(code, co)
+        obfuscated = super().obfuscate(code)
         return obfuscated
 
 
@@ -129,7 +132,7 @@ def obfuscate(args):
     obfuscated = obs.obfuscate(filepath)
     if obfuscated:
         nfp = filepath.replace(".py", ".obf.py")
-        pfh.PythonFileHandler.dump(nfp, obfuscated)
+        utils.dump(nfp, obfuscated)
         print(f"[*] Obfuscated file {filepath} saved as {nfp}")
     else:
         print(f"[!] Unable to obfuscate {filepath}.")

@@ -11,10 +11,12 @@ import sys
 import builtins
 import types
 
+
 class PythonFileHandler:
     """
     Wrapper for file handling.
     """
+
     def __init__(self):
         self.fileHandle = None
 
@@ -65,57 +67,64 @@ class PythonFileHandler:
             return None
 
 
-def parseConsts(obj):
-    """ parse code object and extract const strings from it """
-    parsed = []
-    if not obj:
+class CodeInfo:
+    """ Code's info object """
+
+    def __init__(self):
+        self.consts = []
+        self.reserved = []
+        self.names = []
+
+    def parseConsts(self, obj):
+        """ parse code object and extract const strings from it """
+        parsed = []
+        if not obj:
+            return parsed
+        if isinstance(obj, str):
+            parsed += [obj]
+        elif isinstance(obj, types.CodeType):
+            parsed += self.parseConsts(obj.co_consts)
+        elif isinstance(obj, (tuple, list)):
+            for o in obj:
+                parsed += self.parseConsts(o)
+        elif isinstance(obj, (dict, set)):
+            for k, v in obj.items():
+                parsed += self.parseConsts(k)
+                parsed += self.parseConsts(v)
         return parsed
-    if isinstance(obj, str):
-        parsed += [obj]
-    elif isinstance(obj, types.CodeType):
-        parsed += parseConsts(obj.co_consts)
-    elif isinstance(obj, (tuple, list)):
-        for o in obj:
-            parsed += parseConsts(o)
-    elif isinstance(obj, (dict, set)):
-        for k, v in obj.items():
-            parsed += parseConsts(k)
-            parsed += parseConsts(v)
-    return parsed
 
-
-def extractNames(code):
-    """
-    Parse python code and return reserved names and const strings.
-    """
-    reserved = keyword.kwlist
-    reserved += keyword.softkwlist
-    reserved += dir(builtins)
-    reserved += sys.builtin_module_names
-    if not code:
-        return reserved, []
-    if not code.strip():
-        print(f"[!] code is empty!")
-        return reserved, []
-    try:
-        tree = ast.parse(code, 'exec')
-        co = compile(tree, 'target', 'exec')  # code object
-        consts = parseConsts(co.co_consts)
-    except Exception as e:
-        print(f"[!] {e}")
-        return reserved, []
-    try:
-        namespace = {}
-        exec(code, namespace)  # execute target file for inner info
-        for k in namespace:
-            reserved += [k]
-            reserved += dir(namespace[k])
-        reserved = list(set(reserved))  # remove duplicates
-        reserved.sort()
-        return reserved, consts
-    except Exception as e:
-        print(f"[!] {e}")
-        return reserved, consts
+    def parse(self, code):
+        """
+        Parse python code and return reserved names and const strings.
+        """
+        self.reserved = keyword.kwlist
+        self.reserved += keyword.softkwlist
+        self.reserved += dir(builtins)
+        self.reserved += sys.builtin_module_names
+        if not code or not code.strip():
+            print(f"[!] code is empty!")
+            return False
+        try:
+            tree = ast.parse(code, 'exec')
+            co = compile(tree, 'target', 'exec')  # code object
+            self.names = co.co_names
+            consts = self.parseConsts(co.co_consts)
+            self.consts = consts
+        except Exception as e:
+            print(f"[!] {e}")
+            return False
+        try:
+            namespace = {}
+            exec(code, namespace)  # execute target file for inner info
+            for k in namespace:
+                self.reserved += [k]
+                self.reserved += dir(namespace[k])
+            self.reserved = list(set(self.reserved))  # remove duplicates
+            self.reserved.sort()
+            return True
+        except Exception as e:
+            print(f"[!] {e}")
+            return False
 
 
 def dump(filepath, code):

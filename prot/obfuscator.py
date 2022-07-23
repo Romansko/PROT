@@ -15,10 +15,7 @@ from base64 import b64encode
 
 class Obfuscator:
     def __init__(self):
-        self.reserved = None
-
-    def setReserved(self, reserved):
-        self.reserved = reserved
+        self.ci = None  # code info object
 
     def obfuscate(self, data):
         pass
@@ -34,14 +31,16 @@ class CodeObfuscator(Obfuscator):
         self.minDummyVal = minDummyVal
         self.maxDummyVal = maxDummyVal
         self.maxDummies = maxDummies
-        self.consts = []
-        self.reserved = []
+        self.ci = None
 
     def obfuscate(self, code):
         """ apply obfuscation logics on code."""
-        reserved, consts = utils.extractNames(code)
-        self.reserved = reserved
-        self.consts = consts
+        ci = utils.CodeInfo()
+        if not ci.parse(code):
+            print("[!] CodeObfuscator::obfuscate: error parsing code!")
+            return None
+        self.ci = ci
+        code = self.removeComments(code)
         code = self.obfuscateStrings(code)
         code = self.obfuscateVariables(code)
         code = self.insertDummies(code)
@@ -52,7 +51,7 @@ class CodeObfuscator(Obfuscator):
         var = random.choice(string.ascii_letters)  # start with a letter
         for i in range(random.randint(self.minVarNameLen, self.maxVarNameLen)):
             var += random.choice(string.digits + string.ascii_letters)
-        if (var in self.reserved) or (exclude and var in exclude):
+        if (var in self.ci.reserved) or (exclude and var in exclude):
             print(f"[*] Random variable name {var} is excluded, generating new one..")
             return self.getRandVarName(exclude)
         return var
@@ -73,8 +72,8 @@ class CodeObfuscator(Obfuscator):
             print("[!] CodeObfuscator::refactorVariables: No code to obfuscate!")
             return None
         exclude = []
-        for var in self.consts:
-            if var not in self.reserved:
+        for var in self.ci.names:
+            if var not in self.ci.reserved:
                 newvar = self.getRandVarName(exclude)
                 code = re.sub(r"\b%s\b" % var, newvar, code)  # replace whole words only
                 exclude += [newvar]
@@ -86,7 +85,7 @@ class CodeObfuscator(Obfuscator):
         if not code:
             print("[!] CodeObfuscator::encodeStrings: No code to obfuscate!")
             return None
-        for s in self.consts:
+        for s in self.ci.consts:
             encoded = b64encode(s.encode()).decode()  # base64 string.
             # Try both "" and ''
             code = code.replace(f"\"{s}\"", f"b64decode('{encoded}').decode()")
@@ -107,6 +106,14 @@ class CodeObfuscator(Obfuscator):
                 lines.insert(i, newline)
             i -= 1
         return "\n".join(lines)
+
+    def removeComments(self, code):
+        """ Remove comments from code. """
+        if not code:
+            print("[!] CodeObfuscator::removeComments: No code to obfuscate!")
+            return None
+        code = re.sub(r"#.*", "", code)
+        return code
 
 
 class FileObfuscator(CodeObfuscator):

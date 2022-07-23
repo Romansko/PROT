@@ -100,6 +100,8 @@ class CodeInfo:
         self.reserved = keyword.kwlist
         self.reserved += keyword.softkwlist
         self.reserved += dir(builtins)
+        for bi in dir(builtins):
+            self.reserved += dir(bi)
         self.reserved += sys.builtin_module_names
         if not code or not code.strip():
             print(f"[!] code is empty!")

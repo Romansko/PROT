@@ -87,9 +87,8 @@ class CodeObfuscator(Obfuscator):
             return None
         for s in self.ci.consts:
             encoded = b64encode(s.encode()).decode()  # base64 string.
-            # Try both "" and ''
-            code = code.replace(f"\"{s}\"", f"b64decode('{encoded}').decode()")
-            code = code.replace(f"\'{s}\'", f"b64decode('{encoded}').decode()")
+            # Try both "" and ''. Whole word only. formatted strings won't be replaced.
+            code = re.sub(r"\b[\"\']%s[\"\']\b" % s, f"b64decode('{encoded}').decode()", code)
         return code
 
     def insertDummies(self, code):
@@ -112,7 +111,9 @@ class CodeObfuscator(Obfuscator):
         if not code:
             print("[!] CodeObfuscator::removeComments: No code to obfuscate!")
             return None
-        code = re.sub(r"#.*", "", code)
+        code = re.sub(r"#.*", "", code)                               # remove single line comments
+        code = re.sub(r"\"{3}[^\"]*\"{3}", "", code, flags=re.DOTALL)   # remove multi-line comments """ """
+        code = re.sub(r"\'{3}[^\']*\'{3}", "", code, flags=re.DOTALL)   # remove multi-line comments ''' '''
         return code
 
 

@@ -15,9 +15,7 @@ import builtins
 
 
 class Obfuscator:
-
     def __init__(self):
-        self.rand = 0
         self.reserved = keyword.kwlist
         self.reserved += keyword.softkwlist
         self.reserved += dir(builtins)
@@ -25,32 +23,47 @@ class Obfuscator:
     def obfuscate(self, data, metadata):
         pass
 
-    def setRand(self, rand):
-        self.rand = rand
-
-    def getRand(self):
-        return self.rand
-
 
 class CodeObfuscator(Obfuscator):
     """ Python Code Obfuscator """
 
+    def __init__(self, minVarNameLen=5, maxVarNameLen=10, minDummyVal=1, maxDummyVal=100000, maxDummies=5):
+        super().__init__()
+        self.minVarNameLen = minVarNameLen
+        self.maxVarNameLen = maxVarNameLen
+        self.minDummyVal = minDummyVal
+        self.maxDummyVal = maxDummyVal
+        self.maxDummies = maxDummies
+
     def obfuscate(self, code, co):
+        """ apply obfuscation logics on code."""
         code = self.refactorVariables(code, co)
         code = self.encodeStrings(code, co)
+        code = self.insertDummies(code, co)
         return code
 
-    def getRandVarName(self, exclude=None, minLen=5, maxLen=10):
-        """ Generate a random variable name between min and max length """
+    def getRandVarName(self, exclude=None):
+        """ Generate a random variable name between min and max length. """
         var = random.choice(string.ascii_letters)  # start with a letter
-        for i in range(random.randint(minLen, maxLen)):
+        for i in range(random.randint(self.minVarNameLen, self.maxVarNameLen)):
             var += random.choice(string.digits + string.ascii_letters)
         if (var in self.reserved) or (exclude and var in exclude):
             print(f"[*] Random variable name {var} is excluded, generating new one..")
-            return self.getRandVarName(exclude, minLen, maxLen)
+            return self.getRandVarName(exclude)
         return var
 
+    def getRandDummy(self):
+        """ Generate a random operation with numbers between min and max. """
+        ops = random.randint(1, self.maxDummies)
+        dummy = self.getRandVarName() + " = "
+        for i in range(ops - 1):
+            dummy += str(random.randint(self.minDummyVal, self.maxDummyVal)) + " " + \
+                     random.choice([' + ', ' - ', ' * ', ' / ', ' % ', ' ** ', ' // '])
+        dummy += str(random.randint(self.minDummyVal, self.maxDummyVal))
+        return dummy
+
     def refactorVariables(self, code, co):
+        """ refactor code's variables to random names. """
         if not code or not co:
             print("[!] CodeObfuscator::refactorVariables: No code to obfuscate!")
             return None
@@ -63,6 +76,7 @@ class CodeObfuscator(Obfuscator):
         return code
 
     def encodeStrings(self, code, co):
+        """ Encode (base64) const string within code and wrap with base64 decode logic."""
         code = "from base64 import b64decode\n" + code
         if not code or not co:
             print("[!] CodeObfuscator::encodeStrings: No code to obfuscate!")
@@ -74,6 +88,21 @@ class CodeObfuscator(Obfuscator):
                 code = code.replace(f"\"{s}\"", f"b64decode('{encoded}').decode()")
                 code = code.replace(f"\'{s}\'", f"b64decode('{encoded}').decode()")
         return code
+
+    def insertDummies(self, code, co):
+        """ Insert dummy operations into code. """
+        if not code or not co:
+            print("[!] CodeObfuscator::insertDummies: No code to obfuscate!")
+            return None
+        lines = code.splitlines()
+        i = len(lines) - 1
+        while i >= 0:
+            if lines[i].strip():
+                spaces = len(lines[i]) - len(lines[i].lstrip())
+                newline = ' ' * spaces + self.getRandDummy()
+                lines.insert(i, newline)
+            i -= 1
+        return "\n".join(lines)
 
 
 class FileObfuscator(CodeObfuscator):

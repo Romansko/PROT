@@ -49,7 +49,8 @@ class PythonFileHandler:
         if self.fileHandle:
             try:
                 self.fileHandle.close()
-            except Exception:
+            except Exception as e:
+                print(f"[!] {e}")
                 pass
             self.fileHandle = None
 

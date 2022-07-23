@@ -15,7 +15,6 @@ def getUserInput(description, pattern=None):
     Wrapper to input function. Include validations and program exit point.
     :param description: description to display.
     :param pattern: validate user input with pattern.
-    :param allowBlank: should allow blank input ?
     :return: user's validated input.
     """
     try:

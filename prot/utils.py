@@ -97,11 +97,12 @@ class CodeInfo:
         """
         Parse python code and return reserved names and const strings.
         """
-        self.reserved = keyword.kwlist
+        self.reserved  = dir(object)
+        self.reserved += keyword.kwlist
         self.reserved += keyword.softkwlist
-        self.reserved += dir(builtins)
+        self.reserved += list(set(dir(builtins)) - set(dir(object)))
         for bi in dir(builtins):
-            self.reserved += dir(bi)
+            self.reserved += list(set(dir(bi)) - set(dir(object)))
         self.reserved += sys.builtin_module_names
         if not code or not code.strip():
             print(f"[!] code is empty!")
@@ -120,7 +121,9 @@ class CodeInfo:
             exec(code, namespace)  # execute target file for inner info
             for k in namespace:
                 self.reserved += [k]
-                self.reserved += dir(namespace[k])
+                self.reserved += list(set(dir(namespace[k])) - set(dir(object)))
+                if '__module__' in dir(namespace[k]):
+                    self.reserved += [str(namespace[k].__module__)]
             self.reserved = list(set(self.reserved))  # remove duplicates
             self.reserved.sort()
             return True

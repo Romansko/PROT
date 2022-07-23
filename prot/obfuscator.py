@@ -31,16 +31,18 @@ class CodeObfuscator(Obfuscator):
         self.minDummyVal = minDummyVal
         self.maxDummyVal = maxDummyVal
         self.maxDummies = maxDummies
-        self.ci = None
 
     def obfuscate(self, code):
         """ apply obfuscation logics on code."""
+        if not code:
+            print("[!] CodeObfuscator::obfuscate: No code to obfuscate!")
+            return None
+        code = self.removeComments(code)
         ci = utils.CodeInfo()
         if not ci.parse(code):
             print("[!] CodeObfuscator::obfuscate: error parsing code!")
             return None
         self.ci = ci
-        code = self.removeComments(code)
         code = self.obfuscateStrings(code)
         code = self.obfuscateVariables(code)
         code = self.insertDummies(code)
@@ -81,14 +83,15 @@ class CodeObfuscator(Obfuscator):
 
     def obfuscateStrings(self, code):
         """ Encode (base64) const string within code and wrap with base64 decode logic."""
-        code = "from base64 import b64decode\n" + code
         if not code:
             print("[!] CodeObfuscator::encodeStrings: No code to obfuscate!")
             return None
+        code = "from base64 import b64decode\n" + code
         for s in self.ci.consts:
             encoded = b64encode(s.encode()).decode()  # base64 string.
-            # Try both "" and ''. Whole word only. formatted strings won't be replaced.
-            code = re.sub(r"\b[\"\']%s[\"\']\b" % s, f"b64decode('{encoded}').decode()", code)
+            # Regex to match any string based on https://stackoverflow.com/a/49906750
+            # look behind pattern based on https://stackoverflow.com/a/50857637
+            code = re.sub(r"(?<=[^bruf])(\"\"\"|\'\'\'|\"|\')(%s)\1" % re.escape(s), f"b64decode('{encoded}').decode()", code)
         return code
 
     def insertDummies(self, code):
@@ -98,11 +101,13 @@ class CodeObfuscator(Obfuscator):
             return None
         lines = code.splitlines()
         i = len(lines) - 1
-        while i >= 0:
-            if lines[i].strip():
+        while i > 0:
+            if lines[i].strip() and lines[i-1].strip():
                 spaces = len(lines[i]) - len(lines[i].lstrip())
-                newline = ' ' * spaces + self.getRandDummy()
-                lines.insert(i, newline)
+                if spaces == len(lines[i-1]) - len(lines[i-1].lstrip()):  # some protection
+                    if lines[i-1][-1] != ",":
+                        newline = ' ' * spaces + self.getRandDummy()
+                        lines.insert(i, newline)
             i -= 1
         return "\n".join(lines)
 
@@ -111,9 +116,9 @@ class CodeObfuscator(Obfuscator):
         if not code:
             print("[!] CodeObfuscator::removeComments: No code to obfuscate!")
             return None
-        code = re.sub(r"#.*", "", code)                               # remove single line comments
-        code = re.sub(r"\"{3}[^\"]*\"{3}", "", code, flags=re.DOTALL)   # remove multi-line comments """ """
-        code = re.sub(r"\'{3}[^\']*\'{3}", "", code, flags=re.DOTALL)   # remove multi-line comments ''' '''
+        code = re.sub(r"#.*", "", code)    # remove single line comments
+        # Regex to match any string based on https://stackoverflow.com/a/49906750
+        code = re.sub(r"(\"\"\"|\'\'\')(?:(?!\1)(?:\\.|[^\\]))*\1", "", code, flags=re.DOTALL)   # remove multi-line comments
         return code
 
 

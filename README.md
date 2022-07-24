@@ -30,6 +30,9 @@ Replicator packages aims to show the power of the metaprogramming mechanism by i
 ![](img/package.png)
 
 
+prot package is mainly the cli.
+
+
 ### PROT Usage
 
 prot has several ways of usage.

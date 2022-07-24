@@ -14,18 +14,10 @@ from base64 import b64encode
 
 
 class Obfuscator:
-    def __init__(self):
-        self.ci = None  # code info object
-
-    def obfuscate(self, data):
-        pass
-
-
-class CodeObfuscator(Obfuscator):
     """ Python Code Obfuscator """
 
     def __init__(self, minVarNameLen=5, maxVarNameLen=10, minDummyVal=1, maxDummyVal=100000, maxDummies=5):
-        super().__init__()
+        self.ci = None  # code info object
         self.minVarNameLen = minVarNameLen
         self.maxVarNameLen = maxVarNameLen
         self.minDummyVal = minDummyVal
@@ -38,8 +30,8 @@ class CodeObfuscator(Obfuscator):
             print("[!] CodeObfuscator::obfuscate: No code to obfuscate!")
             return None
         code = self.removeComments(code)
-        ci = utils.CodeInfo()
-        if not ci.parse(code):
+        ci = utils.CodeInfo(code)
+        if not ci.parse():
             print("[!] CodeObfuscator::obfuscate: error parsing code!")
             return None
         self.ci = ci
@@ -122,7 +114,7 @@ class CodeObfuscator(Obfuscator):
         return code
 
 
-class FileObfuscator(CodeObfuscator):
+class FileObfuscator(Obfuscator):
     """ Python Files Obfuscator """
 
     def obfuscate(self, filepath):
@@ -140,6 +132,7 @@ class FileObfuscator(CodeObfuscator):
 
 
 def obfuscate(args):
+    """ entry function """
     filepath = args[0]
     obs = FileObfuscator()
     obfuscated = obs.obfuscate(filepath)

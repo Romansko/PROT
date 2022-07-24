@@ -71,7 +71,8 @@ class PythonFileHandler:
 class CodeInfo:
     """ Code's info object """
 
-    def __init__(self):
+    def __init__(self, code):
+        self.code = code
         self.consts = []
         self.reserved = []
         self.names = []
@@ -94,7 +95,22 @@ class CodeInfo:
                 parsed += self.parseConsts(v)
         return parsed
 
-    def parse(self, code):
+    def compile(self):
+        """
+        Compile python code and return compiled code object.
+        """
+        if not self.code or not self.code.strip():
+            print(f"[!] code is empty!")
+            return None
+        try:
+            tree = ast.parse(self.code, 'exec')
+            co = compile(tree, 'target', 'exec')  # code object compiled for exec
+            return co
+        except Exception as e:
+            print(f"[!] {e}")
+            return None
+
+    def parse(self):
         """
         Parse python code and return reserved names and const strings.
         """
@@ -105,21 +121,17 @@ class CodeInfo:
         for bi in dir(builtins):
             self.reserved += dir(bi)
         self.reserved += sys.builtin_module_names
-        if not code or not code.strip():
+        if not self.code or not self.code.strip():
             print(f"[!] code is empty!")
             return False
-        try:
-            tree = ast.parse(code, 'exec')
-            co = compile(tree, 'target', 'exec')  # code object
-            self.names = co.co_names
-            consts = self.parseConsts(co.co_consts)
-            self.consts = consts
-        except Exception as e:
-            print(f"[!] {e}")
+        co = self.compile()
+        if not co:
             return False
+        self.names = co.co_names
+        consts = self.parseConsts(co.co_consts)
+        self.consts = consts
         try:
-            namespace = {}
-            exec(code, namespace)  # execute target file for inner info
+            namespace = execute(co)
             for k in namespace:
                 self.reserved += [k]
                 self.reserved += dir(namespace[k])
@@ -136,9 +148,19 @@ class CodeInfo:
 
 
 def dump(filepath, code):
-    """
-    Dump python code to a file.
-    """
+    """ Dump python code to a file. """
     with open(filepath, 'w') as f:
         f.write(code)
         print(f"[*] Dumped code to '{filepath}'.")
+
+
+def execute(co):
+    """ Executes python code object. """
+    try:
+        namespace = {}
+        exec(co, namespace)
+        return namespace
+    except Exception as e:
+        print(f"[!] {e}")
+        return None
+

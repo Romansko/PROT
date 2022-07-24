@@ -27,6 +27,8 @@ Replicator packages aims to show the power of the metaprogramming mechanism by i
 (Unless the user writes such a code).
 
 
+![](img/package.png)
+
 
 ### PROT Usage
 

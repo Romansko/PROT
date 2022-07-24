@@ -1,6 +1,6 @@
 """
 PROT - Python Replication & Obfuscation Tools
-Python 3.10
+Python 3.9.13
 file utils.py: Common utilities for PROT
 https://github.com/Romansko/PROT/blob/main/prot/utils.py
 """
@@ -165,18 +165,15 @@ def execute(code):
         return None
 
 
-def extractCodeObject(codeOrFile):
-    if not codeOrFile:
+def extractCodeObject(codeFilepath):
+    if not codeFilepath:
         print("[!] extractCodeObject: Invalid argument!")
         return None
-    if path.isfile(codeOrFile):
-        pfh = PythonFileHandler()
-        if not pfh.open(codeOrFile):
-            return None
-        code = pfh.read()
-        pfh.close()
-    else:
-        code = codeOrFile
+    pfh = PythonFileHandler()
+    if not pfh.open(codeFilepath):
+        return None
+    code = pfh.read()
+    pfh.close()
     ci = CodeInfo(code)
     co = ci.compile()
     if not co:

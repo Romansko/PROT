@@ -1,6 +1,6 @@
 """
 PROT - Python Replication & Obfuscation Tools
-Python 3.10
+Python 3.9.13
 file obfuscator.py: Obfuscation logics.
 https://github.com/Romansko/PROT/blob/main/prot/obfuscator.py
 """

@@ -1,0 +1,2 @@
+mystr = "=== INFECTED ==="
+print(mystr)

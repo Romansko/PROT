@@ -114,7 +114,7 @@ class CodeInfo:
         """
         Parse python code and return reserved names and const strings.
         """
-        self.reserved  = dir(object)
+        self.reserved = dir(object)
         self.reserved += keyword.kwlist
         self.reserved += keyword.softkwlist
         self.reserved += dir(builtins)
@@ -154,13 +154,32 @@ def dump(filepath, code):
         print(f"[*] Dumped code to '{filepath}'.")
 
 
-def execute(co):
-    """ Executes python code object. """
+def execute(code):
+    """ Executes python code or code object. """
     try:
         namespace = {}
-        exec(co, namespace)
+        exec(code, namespace)
         return namespace
     except Exception as e:
         print(f"[!] {e}")
         return None
 
+
+def extractCodeObject(codeOrFile):
+    if not codeOrFile:
+        print("[!] extractCodeObject: Invalid argument!")
+        return None
+    if path.isfile(codeOrFile):
+        pfh = PythonFileHandler()
+        if not pfh.open(codeOrFile):
+            return None
+        code = pfh.read()
+        pfh.close()
+    else:
+        code = codeOrFile
+    ci = CodeInfo(code)
+    co = ci.compile()
+    if not co:
+        print("[!] extractCodeObject: unable to compile given code!")
+        return None
+    return co

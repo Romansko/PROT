@@ -1,0 +1,3 @@
+@echo off
+del /s /q /f test\*.obf.py
+del /s /q /f prot\*.obf.py

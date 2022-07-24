@@ -7,6 +7,10 @@ class BankAccount:
         return f"Your account, {self.name}, has {str(self.amt)} dollars."
 
 
-if __name__ == '__main__':
+def pacc():
     t1 = BankAccount("Bob", 100)
     print(t1)
+
+
+if __name__ == '__main__':
+    pacc()

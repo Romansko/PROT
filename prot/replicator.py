@@ -9,7 +9,6 @@ import sys
 import utils
 from sys import argv, exit
 from os import path
-from io import StringIO
 
 
 class Replicator:
@@ -104,6 +103,7 @@ class FileReplicator(Replicator):
 
 
 def replicate(injectedCodeFilepath, targetFile=None):
+    """ entry function """
     if targetFile:
         replicator = FileReplicator()
         arg2 = targetFile
